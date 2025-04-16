@@ -130,7 +130,7 @@ if (new URLSearchParams(location.search).get("admin") !== null) {
         elem("li", {}, `Per member to complete: ceil(${all16} points / ${playerCount}) = ${tocomplete} points`),
       );
       guild.innerText = guildMessage(`${eventName.value}. Minimum ${minimum} points per member.`);
-      discord.innerText = `@everyone ${eventName.value}: Minimum ${minimum} points per member.\nTo complete: ${tocomplete} points per member.\nTotal: ${all16} points.)`;
+      discord.innerText = `@everyone ${eventName.value}: Minimum ${minimum} points per member.\nTo complete: ${tocomplete} points per member.\n(Total: ${all16} points.)`;
     }
   };
   update();

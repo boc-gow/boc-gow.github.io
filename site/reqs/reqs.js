@@ -33,9 +33,33 @@ if (new URLSearchParams(location.search).get("admin") !== null) {
     };
   });
 
+  const elem = (tagName, props, ...children) => {
+    const el = Object.assign(document.createElement(tagName), props);
+    el.replaceChildren(...children);
+    return el;
+  };
+
+  const refreshers = [];
+  const refresh = () => refreshers.forEach(f => f());
+
+  const goldmsg = elem("input", { disabled: "true", value: "Mags takes care of it :)", oninput: refresh });
+  const goldcheck = elem(
+    "input",
+    {
+      type: "checkbox",
+      onchange: (e) => {
+        goldmsg.disabled = !e.target.checked;
+        refresh();
+      }
+    }
+  );
+
+  const goldstr = () =>
+    goldcheck.checked ? ` NO GOLD WEEK! ${goldmsg.value}` : ` Gold: ${resourcereqs.map((x) => x.gold.shortString).join("/")}`;
+
   const guildMessage = (eventString) => {
     let str = `¥¥¥ Honour channel = 801: ${eventString}`;
-    str += ` Gold: ${resourcereqs.map((x) => x.gold.shortString).join("/")}`;
+    str += goldstr();
     str += ` Trophies: ${resourcereqs
       .map((x) => x.trophies.shortString)
       .join("/")}`;
@@ -43,29 +67,51 @@ if (new URLSearchParams(location.search).get("admin") !== null) {
     return str;
   };
 
-  const elem = (tagName, props, ...children) => {
-    const el = Object.assign(document.createElement(tagName), props);
-    el.replaceChildren(...children);
-    return el;
+  const copyable = (pre) => {
+    const span = elem("span");
+    const status = (s) => {
+      span.innerText = s;
+      setTimeout(() => span.innerText = "", 1000);
+    };
+    const click = () => {
+      navigator.clipboard.writeText(pre.innerText).then(
+        () => status("✔"),
+        (err) => {
+          status("✘");
+          console.error('Async: Could not copy text: ', err);
+        }
+      );
+    };
+    const div = elem(
+      "div",
+      {},
+      pre,
+      elem("button", { onclick: click }, "📋"),
+      span
+    );
+    return div;
   };
 
-  const elems = [elem("h2", {}, "Guild Admin Stuff")];
+  const refreshable = (f) => {
+    const pre = elem("pre");
+    const refresh = () => pre.innerText = f();
+    refreshers.push(refresh);
+    return pre;
+  };
 
+  const elems = [
+    elem("h2", {}, "Guild Admin Stuff"),
+    elem("label", {}, "No gold: ", goldcheck),
+    elem("label", {}, "No gold message: ", goldmsg)
+  ];
+  
   for (const req of simplereqs) {
     elems.push(
       elem("h3", {}, req.event),
       elem("p", {}, "Guild message:"),
-      elem(
-        "pre",
-        {},
-        guildMessage(`${req.event}: Minimum ${req.req} per member.`)
-      ),
+      copyable(refreshable(() => guildMessage(`${req.event}: Minimum ${req.req} per member.`))),
       elem("p", {}, "Discord message:"),
-      elem(
-        "pre",
-        {},
-        `@everyone ${req.event}: Minimum ${req.req} per member.\nRemember to use the event ${req.remember} :)`
-      )
+      copyable(refreshable(() => `@everyone ${req.event}: Minimum ${req.req} per member.\nRemember to use the event ${req.remember} :)`))
     );
   }
 
@@ -103,9 +149,9 @@ if (new URLSearchParams(location.search).get("admin") !== null) {
   elems.push(
     ol,
     elem("p", {}, "Guild message:"),
-    guild,
+    copyable(guild),
     elem("p", {}, "Discord message:"),
-    discord
+    copyable(discord)
   );
   
   const update = () => {
@@ -133,12 +179,13 @@ if (new URLSearchParams(location.search).get("admin") !== null) {
       discord.innerText = `@everyone ${eventName.value}: Minimum ${minimum} points per member.\nTo complete: ${tocomplete} points per member.\n(Total: ${all16} points.)`;
     }
   };
-  update();
-  eventName.oninput = update;
-  players.oninput = update;
+  refreshers.push(update);
+  eventName.oninput = refresh;
+  players.oninput = refresh;
   for (const stage of stages) {
-    stage.oninput = update;
+    stage.oninput = refresh;
   }
   
   document.body.append(...elems);
+  refresh();
 }
